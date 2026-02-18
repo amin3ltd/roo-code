@@ -278,6 +278,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didFinishAbortingStream = false
 	abandoned = false
 	abortReason?: ClineApiReqCancelReason
+
+	// Intent-Code Traceability: Current active intent ID
+	currentIntentId?: string
+
+	// File hash cache for optimistic locking
+	fileHashCache: Map<string, string> = new Map()
 	isInitialized = false
 	isPaused: boolean = false
 
@@ -841,6 +847,42 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public setTaskApiConfigName(apiConfigName: string | undefined): void {
 		this._taskApiConfigName = apiConfigName
+	}
+
+	/**
+	 * Set the current active intent ID for Intent-Code Traceability
+	 */
+	public setCurrentIntent(intentId: string): void {
+		this.currentIntentId = intentId
+		console.log(`[Intent-Traceability] Current intent set to: ${intentId}`)
+	}
+
+	/**
+	 * Get the current active intent ID
+	 */
+	public getCurrentIntent(): string | undefined {
+		return this.currentIntentId
+	}
+
+	/**
+	 * Cache file hash for optimistic locking
+	 */
+	public cacheFileHash(filePath: string, hash: string): void {
+		this.fileHashCache.set(filePath, hash)
+	}
+
+	/**
+	 * Get cached file hash for optimistic locking
+	 */
+	public getCachedFileHash(filePath: string): string | undefined {
+		return this.fileHashCache.get(filePath)
+	}
+
+	/**
+	 * Clear file hash cache
+	 */
+	public clearFileHashCache(): void {
+		this.fileHashCache.clear()
 	}
 
 	static create(options: TaskOptions): [Task, Promise<void>] {

@@ -27,6 +27,7 @@ import { executeCommandTool } from "../tools/ExecuteCommandTool"
 import { useMcpToolTool } from "../tools/UseMcpToolTool"
 import { accessMcpResourceTool } from "../tools/accessMcpResourceTool"
 import { askFollowupQuestionTool } from "../tools/AskFollowupQuestionTool"
+import { selectIntentTool } from "../tools/SelectIntentTool"
 import { switchModeTool } from "../tools/SwitchModeTool"
 import { attemptCompletionTool, AttemptCompletionCallbacks } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
@@ -40,6 +41,12 @@ import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+
+// Hook system imports
+import { preHook, calculateRiskScore } from "../../hooks/pre-hook"
+import { postHook } from "../../hooks/post-hook"
+import { classifyCommand } from "../../hooks/classifier"
+import { validateIntentId, validateScope } from "../../hooks/validator"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -678,11 +685,32 @@ export async function presentAssistantMessage(cline: Task) {
 			switch (block.name) {
 				case "write_to_file":
 					await checkpointSaveAndMark(cline)
-					await writeToFileTool.handle(cline, block as ToolUse<"write_to_file">, {
-						askApproval,
-						handleError,
-						pushToolResult,
-					})
+					// HOOK: Pre-execution validation
+					{
+						const toolUse = block as ToolUse<"write_to_file">
+						const cwd = (cline as any).task?.cwd || process.cwd()
+						try {
+							// Pre-hook: Check intent selection and scope
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							if (preResult.blocked) {
+								pushToolResult(preResult.error || "Execution blocked by hook system")
+								break
+							}
+							// Execute the tool
+							await writeToFileTool.handle(cline, toolUse, { askApproval, handleError, pushToolResult })
+							// Post-hook: Log trace entry
+							await postHook(
+								toolUse.name,
+								toolUse.params,
+								{ success: true },
+								cwd,
+								preResult.intentContext?.id,
+							)
+						} catch (hookError) {
+							console.error("[Hook] Error:", hookError)
+							await writeToFileTool.handle(cline, toolUse, { askApproval, handleError, pushToolResult })
+						}
+					}
 					break
 				case "update_todo_list":
 					await updateTodoListTool.handle(cline, block as ToolUse<"update_todo_list">, {
@@ -692,21 +720,65 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "apply_diff":
-					await checkpointSaveAndMark(cline)
-					await applyDiffToolClass.handle(cline, block as ToolUse<"apply_diff">, {
-						askApproval,
-						handleError,
-						pushToolResult,
-					})
+					// HOOK: Pre-execution validation for apply_diff
+					{
+						await checkpointSaveAndMark(cline)
+						const toolUse = block as ToolUse<"apply_diff">
+						const cwd = (cline as any).task?.cwd || ""
+						try {
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							if (preResult.blocked) {
+								pushToolResult(preResult.error || "Execution blocked by hook system")
+								break
+							}
+							await applyDiffToolClass.handle(cline, toolUse, {
+								askApproval,
+								handleError,
+								pushToolResult,
+							})
+							await postHook(
+								toolUse.name,
+								toolUse.params,
+								{ success: true },
+								cwd,
+								preResult.intentContext?.id,
+							)
+						} catch (hookError) {
+							console.error("[Hook] Error in apply_diff:", hookError)
+							await applyDiffToolClass.handle(cline, toolUse, {
+								askApproval,
+								handleError,
+								pushToolResult,
+							})
+						}
+					}
 					break
 				case "edit":
 				case "search_and_replace":
-					await checkpointSaveAndMark(cline)
-					await editTool.handle(cline, block as ToolUse<"edit">, {
-						askApproval,
-						handleError,
-						pushToolResult,
-					})
+					// HOOK: Pre-execution validation for edit
+					{
+						await checkpointSaveAndMark(cline)
+						const toolUse = block as ToolUse<"edit">
+						const cwd = (cline as any).task?.cwd || ""
+						try {
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							if (preResult.blocked) {
+								pushToolResult(preResult.error || "Execution blocked by hook system")
+								break
+							}
+							await editTool.handle(cline, toolUse, { askApproval, handleError, pushToolResult })
+							await postHook(
+								toolUse.name,
+								toolUse.params,
+								{ success: true },
+								cwd,
+								preResult.intentContext?.id,
+							)
+						} catch (hookError) {
+							console.error("[Hook] Error in edit:", hookError)
+							await editTool.handle(cline, toolUse, { askApproval, handleError, pushToolResult })
+						}
+					}
 					break
 				case "search_replace":
 					await checkpointSaveAndMark(cline)
@@ -762,11 +834,37 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "execute_command":
-					await executeCommandTool.handle(cline, block as ToolUse<"execute_command">, {
-						askApproval,
-						handleError,
-						pushToolResult,
-					})
+					// HOOK: Pre-execution validation for execute_command
+					{
+						const toolUse = block as ToolUse<"execute_command">
+						const cwd = (cline as any).task?.cwd || ""
+						try {
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							if (preResult.blocked) {
+								pushToolResult(preResult.error || "Execution blocked by hook system")
+								break
+							}
+							await executeCommandTool.handle(cline, toolUse, {
+								askApproval,
+								handleError,
+								pushToolResult,
+							})
+							await postHook(
+								toolUse.name,
+								toolUse.params,
+								{ success: true },
+								cwd,
+								preResult.intentContext?.id,
+							)
+						} catch (hookError) {
+							console.error("[Hook] Error in execute_command:", hookError)
+							await executeCommandTool.handle(cline, toolUse, {
+								askApproval,
+								handleError,
+								pushToolResult,
+							})
+						}
+					}
 					break
 				case "read_command_output":
 					await readCommandOutputTool.handle(cline, block as ToolUse<"read_command_output">, {
@@ -791,6 +889,13 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "ask_followup_question":
 					await askFollowupQuestionTool.handle(cline, block as ToolUse<"ask_followup_question">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "select_active_intent":
+					await selectIntentTool.handle(cline, block as any, {
 						askApproval,
 						handleError,
 						pushToolResult,
