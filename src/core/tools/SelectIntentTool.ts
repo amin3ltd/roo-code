@@ -8,6 +8,35 @@ interface SelectActiveIntentParams {
 	intent_id: string
 }
 
+/**
+ * SelectIntentTool - Implements Stage 2 of the Two-Stage State Machine
+ *
+ * This tool is the "Intent Checkout" mechanism. Before an AI agent can modify
+ * any code, it MUST call this tool to select an active intent.
+ *
+ * Two-Stage State Machine Flow:
+ *
+ * Stage 1: REQUEST
+ *   User provides task: "Refactor auth middleware"
+ *
+ * Stage 2: INTENT CHECKOUT (This Tool)
+ *   - Agent calls select_active_intent(intent_id: "INT-001")
+ *   - Tool validates intent exists in active_intents.yaml
+ *   - Tool returns context: constraints, owned_scope, acceptance_criteria
+ *   - Task.currentIntentId is set for state tracking
+ *
+ * Stage 3: CONTEXTUALIZED ACTION
+ *   - Agent can now proceed with write/edit operations
+ *   - Pre-Hook verifies intent was selected before allowing changes
+ *   - Post-Hook logs to agent_trace.jsonl
+ *
+ * Example:
+ *   User: "Refactor the auth middleware"
+ *   Agent: [Calls select_active_intent with intent_id: "INT-001"]
+ *   Tool Result: "Intent Selected: JWT Auth Migration\nCONSTRAINTS: - Must maintain backward compat..."
+ *   Agent: [Now proceeds with write_to_file operations]
+ */
+
 export class SelectIntentTool extends BaseTool<any> {
 	readonly name = "select_active_intent" as const
 

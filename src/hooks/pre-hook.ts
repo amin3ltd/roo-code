@@ -1,6 +1,21 @@
 /**
  * Pre-Hook: Intercepts tool execution before it runs
  *
+ * Two-Stage State Machine Implementation:
+ *
+ * Stage 1: REQUEST - User provides natural language request
+ *   -> Agent analyzes request and identifies relevant intent
+ *
+ * Stage 2: INTENT CHECKOUT (The Handshake) - Agent must call select_active_intent(intent_id)
+ *   -> Pre-Hook intercepts and verifies intent is valid
+ *   -> Validates scope permissions for target files
+ *   -> Returns intent context (constraints, owned_scope, acceptance_criteria)
+ *   -> If no valid intent: BLOCKS execution with error message
+ *
+ * Stage 3: CONTEXTUALIZED ACTION - Agent proceeds with tool execution
+ *   -> Post-Hook logs trace entry with content_hash
+ *   -> Maintains Intent-AST correlation
+ *
  * Responsibilities:
  * - Validate intent selection before code changes
  * - Check scope permissions
