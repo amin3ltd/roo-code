@@ -1,0 +1,12 @@
+# Agent Trace Log - Intent-Code Traceability
+# This file records every file modification with intent linkage
+# Format: JSON Lines (one JSON object per line)
+# 
+# Each entry contains:
+# - id: UUID
+# - timestamp: ISO 8601
+# - intent_id: The active intent ID
+# - mutation_class: AST_REFACTOR | INTENT_EVOLUTION | READ_ONLY
+# - files: Array of file modifications with content_hash
+#
+# This file is append-only. Do not manually edit.

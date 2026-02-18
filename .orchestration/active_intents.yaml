@@ -1,0 +1,44 @@
+# Active Intents - Intent-Code Traceability
+# This file tracks the lifecycle of business requirements
+
+active_intents:
+  - id: "INT-001"
+    name: "Weather API Implementation"
+    status: "IN_PROGRESS"
+    owned_scope:
+      - "src/api/weather/**"
+      - "src/services/weather.ts"
+      - "tests/weather/**"
+    constraints:
+      - "Must use REST API only"
+      - "Must include error handling"
+      - "Must not exceed 100ms response time"
+    acceptance_criteria:
+      - "Unit tests pass with 90% coverage"
+      - "API documentation updated"
+      - "Integration tests pass"
+
+  - id: "INT-002"
+    name: "User Authentication Refactor"
+    status: "PENDING"
+    owned_scope:
+      - "src/auth/**"
+      - "src/middleware/auth.ts"
+    constraints:
+      - "Must maintain backward compatibility"
+      - "Must not use external auth providers"
+    acceptance_criteria:
+      - "All existing tests pass"
+      - "Migration guide documented"
+
+  - id: "INT-003"
+    name: "Performance Optimization"
+    status: "PENDING"
+    owned_scope:
+      - "src/**"
+    constraints:
+      - "Must not break existing functionality"
+      - "Performance improvements must be measurable"
+    acceptance_criteria:
+      - "Lighthouse score improvement of 20%"
+      - "No regression in test coverage"
