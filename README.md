@@ -34,6 +34,18 @@ pnpm install
 # Press F5 to launch
 ```
 
+### Key Files Changed
+
+| File                                                    | Type     | Purpose                           |
+| ------------------------------------------------------- | -------- | --------------------------------- |
+| `src/hooks/`                                            | NEW      | Hook system (6 files)             |
+| `src/core/tools/SelectIntentTool.ts`                    | NEW      | Intent selection tool             |
+| `src/core/prompts/sections/rules.ts`                    | MODIFIED | Added Intent-Code Traceability    |
+| `src/core/assistant-message/presentAssistantMessage.ts` | MODIFIED | Hook integration                  |
+| `src/core/task/Task.ts`                                 | MODIFIED | Intent state tracking             |
+| `.orchestration/`                                       | NEW      | Orchestration templates (5 files) |
+| `INTENTS.md`                                            | NEW      | Full documentation                |
+
 ### What This Fork Does
 
 ```
@@ -68,7 +80,7 @@ pnpm install
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
