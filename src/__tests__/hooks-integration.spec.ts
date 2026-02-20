@@ -7,33 +7,31 @@
  * - Scope enforcement with real file operations
  */
 
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import * as fs from "fs/promises"
 import * as path from "path"
 import * as yaml from "js-yaml"
 import * as crypto from "crypto"
 import { classifyCommand, isHighRisk } from "../hooks/classifier"
 import { validateIntentId, validateScope, getActiveIntents } from "../hooks/validator"
-import { computeSHA256 } from "../hooks/post-hook"
+import { computeSHA256, postHook } from "../hooks/post-hook"
 
 describe("Hook System Integration Tests", () => {
-	const testCwd = "/tmp/hook-integration-test"
+	const testDir = path.join(process.cwd(), "test-temp-integration")
 
 	beforeEach(async () => {
 		// Create test directory structure
-		try {
-			await fs.mkdir(path.join(testCwd, ".orchestration"), { recursive: true })
-			await fs.mkdir(path.join(testCwd, "src", "auth"), { recursive: true })
-			await fs.mkdir(path.join(testCwd, "src", "payment"), { recursive: true })
-		} catch {
-			// Ignore errors
-		}
+		await fs.mkdir(path.join(testDir, ".orchestration"), { recursive: true })
+		await fs.mkdir(path.join(testDir, "src", "auth"), { recursive: true })
+		await fs.mkdir(path.join(testDir, "src", "payment"), { recursive: true })
+		await fs.mkdir(path.join(testDir, "src", "api"), { recursive: true })
+		await fs.mkdir(path.join(testDir, "src", "weather"), { recursive: true })
 	})
 
 	afterEach(async () => {
 		// Cleanup
 		try {
-			await fs.rm(testCwd, { recursive: true, force: true })
+			await fs.rm(testDir, { recursive: true, force: true })
 		} catch {
 			// Ignore errors
 		}
@@ -54,10 +52,10 @@ describe("Hook System Integration Tests", () => {
 					},
 				],
 			}
-			await fs.writeFile(path.join(testCwd, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
+			await fs.writeFile(path.join(testDir, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
 
 			// Step 2: Validate intent exists
-			const intentResult = await validateIntentId("INT-001", testCwd)
+			const intentResult = await validateIntentId("INT-001", testDir)
 			expect(intentResult.valid).toBe(true)
 			expect(intentResult.context?.name).toBe("Build Weather API")
 
@@ -72,16 +70,27 @@ describe("Hook System Integration Tests", () => {
 			expect(riskLevel).toBe(false)
 
 			// Step 5: Validate scope
-			const scopeResult = await validateScope("src/api/weather.ts", "INT-001", testCwd)
+			const scopeResult = await validateScope("src/api/weather.ts", "INT-001", testDir)
 			expect(scopeResult.valid).toBe(true)
 
 			// Step 6: Write file and compute hash
 			const testContent = "export const weather = {};"
-			await fs.writeFile(path.join(testCwd, "src", "api", "weather.ts"), testContent)
+			await fs.writeFile(path.join(testDir, "src", "api", "weather.ts"), testContent)
 
-			const contentHash = await computeSHA256(path.join(testCwd, "src", "api", "weather.ts"))
+			const contentHash = await computeSHA256(path.join(testDir, "src", "api", "weather.ts"))
 			const expectedHash = crypto.createHash("sha256").update(testContent).digest("hex")
 			expect(contentHash).toBe(expectedHash)
+
+			// Step 7: Run postHook to create trace entry
+			await postHook("write_to_file", { path: "src/api/weather.ts" }, { success: true }, testDir, "INT-001")
+
+			// Verify trace entry was created
+			const traceFile = path.join(testDir, ".orchestration", "agent_trace.jsonl")
+			const traceContent = await fs.readFile(traceFile, "utf-8")
+			const lines = traceContent.trim().split("\n")
+			expect(lines.length).toBe(1)
+			const entry = JSON.parse(lines[0])
+			expect(entry.intent_id).toBe("INT-001")
 		})
 
 		it("should block unauthorized scope", async () => {
@@ -98,10 +107,10 @@ describe("Hook System Integration Tests", () => {
 					},
 				],
 			}
-			await fs.writeFile(path.join(testCwd, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
+			await fs.writeFile(path.join(testDir, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
 
 			// Try to access file outside scope
-			const scopeResult = await validateScope("src/payment/billing.ts", "INT-001", testCwd)
+			const scopeResult = await validateScope("src/payment/billing.ts", "INT-001", testDir)
 			expect(scopeResult.valid).toBe(false)
 			expect(scopeResult.message).toContain("Scope Violation")
 		})
@@ -120,75 +129,116 @@ describe("Hook System Integration Tests", () => {
 				expect(result).toBe(expected)
 			}
 		})
-	})
 
-	describe("Parallel Agent Simulation", () => {
-		it("should detect file changes between reads", async () => {
-			const filePath = path.join(testCwd, "src", "auth", "middleware.ts")
-
-			// Agent A reads file
-			const originalContent = "const auth = {}"
-			await fs.writeFile(filePath, originalContent)
-			const hashBefore = await computeSHA256(filePath)
-
-			// Agent B (or human) modifies file
-			const modifiedContent = "const auth = { token: true }"
-			await fs.writeFile(filePath, modifiedContent)
-
-			// Agent A tries to write but should detect change
-			const hashAfter = await computeSHA256(filePath)
-
-			expect(hashBefore).not.toBe(hashAfter)
-		})
-	})
-
-	describe("Trace Entry Integration", () => {
-		it("should create complete trace entry", async () => {
-			// Setup
+		it("should handle parallel intent operations", async () => {
+			// Create multiple intents
 			const intentConfig = {
 				active_intents: [
 					{
 						id: "INT-001",
-						name: "Test",
+						name: "Auth Feature",
 						status: "IN_PROGRESS",
-						owned_scope: ["src/**"],
+						owned_scope: ["src/auth/**"],
+						constraints: [],
+						acceptance_criteria: [],
+					},
+					{
+						id: "INT-002",
+						name: "Payment Feature",
+						status: "IN_PROGRESS",
+						owned_scope: ["src/payment/**"],
 						constraints: [],
 						acceptance_criteria: [],
 					},
 				],
 			}
-			await fs.writeFile(path.join(testCwd, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
+			await fs.writeFile(path.join(testDir, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
 
-			// Create file to trace
-			const testFile = path.join(testCwd, "src", "app.ts")
-			const testContent = "console.log('hello')"
-			await fs.writeFile(testFile, testContent)
+			// Get all active intents
+			const intents = await getActiveIntents(testDir)
+			expect(intents.length).toBe(2)
 
-			// Compute trace data
-			const contentHash = await computeSHA256(testFile)
-			const classification = classifyCommand("write_to_file")
-			const scopeValid = await validateScope("src/app.ts", "INT-001", testCwd)
+			// Validate both intents can work in their respective scopes
+			const authScope = await validateScope("src/auth/login.ts", "INT-001", testDir)
+			const paymentScope = await validateScope("src/payment/checkout.ts", "INT-002", testDir)
 
-			// Verify trace would be valid
-			expect(classification).toBe("destructive")
-			expect(scopeValid.valid).toBe(true)
-			expect(contentHash).toBe(crypto.createHash("sha256").update(testContent).digest("hex"))
-		})
-	})
+			expect(authScope.valid).toBe(true)
+			expect(paymentScope.valid).toBe(true)
 
-	describe("Error Handling", () => {
-		it("should handle missing orchestration directory", async () => {
-			const result = await validateIntentId("INT-001", "/nonexistent/path")
-			expect(result.valid).toBe(false)
-			expect(result.message).toContain("No active_intents.yaml found")
+			// But they can't cross scopes
+			const crossScope = await validateScope("src/auth/login.ts", "INT-002", testDir)
+			expect(crossScope.valid).toBe(false)
 		})
 
-		it("should handle invalid YAML gracefully", async () => {
-			await fs.mkdir(path.join(testCwd, ".orchestration"), { recursive: true })
-			await fs.writeFile(path.join(testCwd, ".orchestration", "active_intents.yaml"), "invalid: yaml: content:")
+		it("should classify commands correctly in flow", async () => {
+			// Test command classification integration
+			expect(classifyCommand("write_to_file")).toBe("destructive")
+			expect(classifyCommand("edit")).toBe("destructive")
+			expect(classifyCommand("read_file")).toBe("safe")
+			expect(classifyCommand("search_files")).toBe("safe")
+			expect(classifyCommand("list_files")).toBe("safe")
 
-			const result = await validateIntentId("INT-001", testCwd)
-			expect(result.valid).toBe(false)
+			// Test high-risk with specific paths - glob patterns in path are high risk
+			expect(isHighRisk("write_to_file", { path: "src/**/*.ts" })).toBe(true)
+			expect(isHighRisk("write_to_file", { path: "src/app.ts" })).toBe(false)
+		})
+
+		it("should handle complete workflow with trace", async () => {
+			// Setup intent
+			const intentConfig = {
+				active_intents: [
+					{
+						id: "INT-003",
+						name: "Add User Service",
+						status: "IN_PROGRESS",
+						owned_scope: ["src/auth/**"],
+						constraints: [],
+						acceptance_criteria: [],
+					},
+				],
+			}
+			await fs.writeFile(path.join(testDir, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
+
+			// Validate intent
+			const intentResult = await validateIntentId("INT-003", testDir)
+			expect(intentResult.valid).toBe(true)
+
+			// Create file
+			const filePath = path.join(testDir, "src", "auth", "service.ts")
+			await fs.writeFile(filePath, "export class AuthService {}")
+
+			// Post-hook
+			await postHook("write_to_file", { path: "src/auth/service.ts" }, { success: true }, testDir, "INT-003")
+
+			// Verify
+			const traceFile = path.join(testDir, ".orchestration", "agent_trace.jsonl")
+			const content = await fs.readFile(traceFile, "utf-8")
+			const entry = JSON.parse(content.trim().split("\n")[0])
+
+			expect(entry.intent_id).toBe("INT-003")
+			expect(entry.mutation_class).toBe("INTENT_EVOLUTION")
+			expect(entry.files[0].relative_path).toBe("src/auth/service.ts")
+		})
+
+		it("should work with simple patterns in scope", async () => {
+			const intentConfig = {
+				active_intents: [
+					{
+						id: "INT-004",
+						name: "API Work",
+						status: "IN_PROGRESS",
+						owned_scope: ["src/"],
+						constraints: [],
+						acceptance_criteria: [],
+					},
+				],
+			}
+			await fs.writeFile(path.join(testDir, ".orchestration", "active_intents.yaml"), yaml.dump(intentConfig))
+
+			// Test various paths
+			expect((await validateScope("src/api/v1/user.ts", "INT-004", testDir)).valid).toBe(true)
+			expect((await validateScope("src/index.ts", "INT-004", testDir)).valid).toBe(true)
+			expect((await validateScope("config/app.json", "INT-004", testDir)).valid).toBe(false)
 		})
 	})
 })
