@@ -13,6 +13,39 @@
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
+## ⚡ Intent-Code Traceability Fork
+
+This fork adds **Intent-Code Traceability** to Roo Code - a governance layer that enforces AI agents to select a valid intent before making code changes.
+
+| Feature                   | Status         |
+| ------------------------- | -------------- |
+| Two-Stage State Machine   | ✅ Implemented |
+| Pre-Hook Validation       | ✅ Implemented |
+| Post-Hook Trace Logging   | ✅ Implemented |
+| SHA-256 Content Hashing   | ✅ Implemented |
+| Parallel Orchestration    | ✅ Implemented |
+| Modular Hook Architecture | ✅ Implemented |
+
+### Quick Start
+
+```bash
+# Run in VS Code
+pnpm install
+# Press F5 to launch
+```
+
+### What This Fork Does
+
+```
+1. Agent receives user request
+2. Agent MUST call select_active_intent(intent_id)
+3. Pre-Hook validates & returns context
+4. Agent makes code changes
+5. Post-Hook logs to agent_trace.jsonl
+```
+
+**See below or [INTENTS.md](./INTENTS.md) for full documentation.**
+
 <details>
   <summary>🌐 Available languages</summary>
 
@@ -35,7 +68,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
