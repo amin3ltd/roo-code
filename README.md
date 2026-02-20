@@ -35,7 +35,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -66,10 +66,10 @@ Learn more: [Using Modes](https://docs.roocode.com/basic-usage/using-modes) • 
 
 <div align="center">
 
-|                                                                                                                                                                           |                                                                                                                                                                            |                                                                                                                                                                         |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| <a href="https://www.youtube.com/watch?v=Mcq3r1EPZ-4"><img src="https://img.youtube.com/vi/Mcq3r1EPZ-4/maxresdefault.jpg" width="100%"></a><br><b>Installing Roo Code</b> | <a href="https://www.youtube.com/watch?v=ZBML8h5cCgo"><img src="https://img.youtube.com/vi/ZBML8h5cCgo/maxresdefault.jpg" width="100%"></a><br><b>Configuring Profiles</b> | <a href="https://www.youtube.com/watch?v=r1bpod1VWhg"><img src="https://img.youtube.com/vi/r1bpod1VWhg/maxresdefault.jpg" width="100%"></a><br><b>Codebase Indexing</b> |
-|    <a href="https://www.youtube.com/watch?v=iiAv1eKOaxk"><img src="https://img.youtube.com/vi/iiAv1eKOaxk/maxresdefault.jpg" width="100%"></a><br><b>Custom Modes</b>     |     <a href="https://www.youtube.com/watch?v=Ho30nyY332E"><img src="https://img.youtube.com/vi/Ho30nyY332E/maxresdefault.jpg" width="100%"></a><br><b>Checkpoints</b>      |    <a href="https://www.youtube.com/watch?v=HmnNSasv7T8"><img src="https://img.youtube.com/vi/HmnNSasv7T8/maxresdefault.jpg" width="100%"></a><br><b>Context Management</b>     |
+|                                                                                                                                                                           |                                                                                                                                                                            |                                                                                                                                                                          |
+| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| <a href="https://www.youtube.com/watch?v=Mcq3r1EPZ-4"><img src="https://img.youtube.com/vi/Mcq3r1EPZ-4/maxresdefault.jpg" width="100%"></a><br><b>Installing Roo Code</b> | <a href="https://www.youtube.com/watch?v=ZBML8h5cCgo"><img src="https://img.youtube.com/vi/ZBML8h5cCgo/maxresdefault.jpg" width="100%"></a><br><b>Configuring Profiles</b> | <a href="https://www.youtube.com/watch?v=r1bpod1VWhg"><img src="https://img.youtube.com/vi/r1bpod1VWhg/maxresdefault.jpg" width="100%"></a><br><b>Codebase Indexing</b>  |
+|    <a href="https://www.youtube.com/watch?v=iiAv1eKOaxk"><img src="https://img.youtube.com/vi/iiAv1eKOaxk/maxresdefault.jpg" width="100%"></a><br><b>Custom Modes</b>     |     <a href="https://www.youtube.com/watch?v=Ho30nyY332E"><img src="https://img.youtube.com/vi/Ho30nyY332E/maxresdefault.jpg" width="100%"></a><br><b>Checkpoints</b>      | <a href="https://www.youtube.com/watch?v=HmnNSasv7T8"><img src="https://img.youtube.com/vi/HmnNSasv7T8/maxresdefault.jpg" width="100%"></a><br><b>Context Management</b> |
 
 </div>
 <p align="center">
@@ -170,6 +170,52 @@ We love community contributions! Get started by reading our [CONTRIBUTING.md](CO
 ## License
 
 [Apache 2.0 © 2025 Roo Code, Inc.](./LICENSE)
+
+---
+
+## Intent-Code Traceability (Fork Feature)
+
+This fork implements **Intent-Code Traceability** - a governance layer for AI agents.
+
+### Quick Start
+
+**Run in VS Code:**
+
+```
+1. Open roo-code folder in VS Code
+2. Press F5 to launch Extension Development Host
+```
+
+**Build VSIX:**
+
+```bash
+cd roo-code
+pnpm install
+pnpm vsix
+```
+
+### Two-Stage State Machine
+
+```
+Stage 1: REQUEST → Agent analyzes user request
+Stage 2: INTENT CHECKOUT → Agent calls select_active_intent()
+         → Pre-Hook validates → Returns context
+Stage 3: ACTION → Agent makes changes → Post-Hook logs trace
+```
+
+### Key Files
+
+| File                                 | Purpose                                      |
+| ------------------------------------ | -------------------------------------------- |
+| `src/hooks/`                         | Hook system (pre-hook, post-hook, validator) |
+| `src/core/tools/SelectIntentTool.ts` | Intent selection tool                        |
+| `.orchestration/active_intents.yaml` | Intent specifications                        |
+| `.orchestration/agent_trace.jsonl`   | Trace ledger                                 |
+
+### Documentation
+
+- [INTENTS.md](./INTENTS.md) - Full documentation
+- [PARALLEL_DEMO.md](./.orchestration/PARALLEL_DEMO.md) - Workflow demo
 
 ---
 

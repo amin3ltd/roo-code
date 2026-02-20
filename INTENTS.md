@@ -2,7 +2,142 @@
 
 This fork of Roo Code implements **Intent-Code Traceability** - a governance layer that enforces AI agents to select a valid intent before making code changes.
 
-## Overview
+## Quick Start
+
+### Running the Extension
+
+**Method 1: Extension Development Host (Recommended)**
+
+```
+1. Open the roo-code folder in VS Code
+2. Press F5 - This launches a new VS Code window with your extension loaded
+```
+
+**Method 2: Install as VSIX**
+
+```bash
+cd roo-code
+pnpm install
+pnpm vsix
+```
+
+Then install the generated `.vsix` file from Extensions panel (⋮ → Install from VSIX)
+
+**Method 3: From GitHub**
+
+```
+1. Go to: https://github.com/amin3ltd/roo-code
+2. Download source as ZIP
+3. Extract, run: pnpm install && pnpm vsix
+4. Install the VSIX
+```
+
+### Testing the Hook System
+
+1. Create a test workspace with `.orchestration/active_intents.yaml`:
+    ```yaml
+    active_intents:
+        - id: "INT-001"
+          name: "Test Feature"
+          status: "IN_PROGRESS"
+          owned_scope:
+              - "src/**"
+          constraints:
+              - "Test constraint"
+          acceptance_criteria:
+              - "Tests pass"
+    ```
+2. Press `F5` in roo-code folder
+3. Open your test workspace in the new window
+4. Ask the agent to modify a file
+5. It should ask to select intent first
+
+## Two-Stage State Machine Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     USER REQUEST                                │
+│            "Refactor the auth middleware"                       │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STAGE 1: REQUEST ANALYZER                                     │
+│  - Agent analyzes user request                                  │
+│  - Identifies relevant intent                                  │
+│  - Agent CANNOT write code yet                                 │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STAGE 2: INTENT CHECKOUT (The Handshake)                     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Agent calls: select_active_intent(intent_id: "INT-001")│    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                           │                                     │
+│                           ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ PRE-HOOK INTERCEPTS                                    │    │
+│  │ ✓ Validates intent_id exists                          │    │
+│  │ ✓ Checks file is within owned_scope                   │    │
+│  │ ✓ Returns intent context (constraints, scope)         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                           │                                     │
+│              ┌────────────┴────────────┐                       │
+│              ▼                         ▼                       │
+│     ┌──────────────┐        ┌──────────────┐                 │
+│     │ VALID         │        │ INVALID       │                 │
+│     │ Proceed       │        │ BLOCKED       │                 │
+│     │               │        │ Error Message │                 │
+│     └──────────────┘        └──────────────┘                 │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STAGE 3: CONTEXTUALIZED ACTION                                │
+│  - Agent makes code changes                                    │
+│  - POST-HOOK logs to agent_trace.jsonl                         │
+│  - Computes SHA-256 content hash                              │
+│  - Maintains Intent-AST correlation                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Parallel Orchestration Flow
+
+```
+┌─────────────────────────┐      ┌─────────────────────────┐
+│    ARCHITECT AGENT      │      │    BUILDER AGENT         │
+│       (Agent A)         │      │       (Agent B)           │
+└───────────┬─────────────┘      └───────────┬─────────────┘
+            │                                │
+            ▼                                │
+┌─────────────────────────┐                  │
+│ Creates/Updates        │                  │
+│ active_intents.yaml    │                  │
+│ Defines owned_scope    │                  ▼
+│ Sets constraints       │      ┌─────────────────────────┐
+└───────────┬─────────────┘      │ Reads active_intents   │
+            │                     │ Selects INT-001         │
+            │                     │ (Pre-Hook validates)    │
+            │                     └───────────┬─────────────┘
+            │                                 │
+            │                                 ▼
+            │                     ┌─────────────────────────┐
+            │                     │ Makes code changes     │
+            │                     │ Post-Hook logs trace   │
+            │                     └───────────┬─────────────┘
+            │                                 │
+            ▼                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SHARED BRAIN                             │
+│                      CLAUDE.md                              │
+│  - Lessons learned recorded                                 │
+│  - Prevents duplicate work                                  │
+│  - Synchronizes parallel agents                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Architecture
 
 This implementation adds a deterministic hook system that intercepts every tool execution to:
 
