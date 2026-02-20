@@ -1,6 +1,5 @@
 /**
  * Post-Hook: Intercepts tool execution after it runs
- *
  * Responsibilities:
  * - Log trace entries to agent_trace.jsonl
  * - Compute content hashes for files
@@ -88,11 +87,12 @@ export async function postHook(
 
 		// Only log for file modifications
 		if (!["write_to_file", "edit", "apply_diff", "execute_command"].includes(toolName)) {
+			console.log(`[Post-Hook] Tool ${toolName} not in trace list, skipping`)
 			return
 		}
 
 		if (!intentId) {
-			console.log("[Post-Hook] No intent_id, skipping trace")
+			console.log(`[Post-Hook] No intent_id, skipping trace. Tool: ${toolName}`)
 			return
 		}
 
@@ -145,7 +145,7 @@ export async function postHook(
 		// Append to trace file
 		await appendToTrace(entry, cwd)
 
-		console.log(`[Post-Hook] Trace entry logged: ${entry.id}`)
+		console.log(`[Post-Hook] Trace entry logged: ${entry.id}, intent: ${intentId}, tool: ${toolName}`)
 	} catch (error) {
 		console.error("[Post-Hook] Error:", error)
 		// Don't throw - post-hook errors should not break the flow
@@ -183,6 +183,7 @@ function determineMutationClass(
  */
 async function appendToTrace(entry: TraceEntry, cwd: string): Promise<void> {
 	const tracePath = path.join(cwd, ORCHESTRATION_DIR, TRACE_FILE)
+	console.log(`[Post-Hook] Writing trace to: ${tracePath}`)
 
 	// Ensure directory exists
 	await fs.mkdir(path.join(cwd, ORCHESTRATION_DIR), { recursive: true })

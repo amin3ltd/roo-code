@@ -80,8 +80,9 @@ export async function validateIntentId(intentId: string, cwd: string): Promise<V
 			}
 		}
 
-		// Check if intent is active
-		if (intent.status !== "IN_PROGRESS" && intent.status !== "ACTIVE") {
+		// Check if intent is active (case-insensitive comparison)
+		const normalizedStatus = intent.status?.toUpperCase()
+		if (normalizedStatus !== "IN_PROGRESS" && normalizedStatus !== "ACTIVE") {
 			return {
 				valid: false,
 				message: `Intent "${intentId}" has status "${intent.status}". Only IN_PROGRESS or ACTIVE intents can be used.`,

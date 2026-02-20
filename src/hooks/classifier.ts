@@ -34,7 +34,8 @@ const DESTRUCTIVE_COMMANDS = [
 	"apply_patch",
 	"delete_file",
 	"execute_command",
-	"new_task",
+	// new_task is not a file-modifying operation, it's creating subtasks
+	// switch_mode and attempt_completion don't modify workspace files
 	"switch_mode",
 	"attempt_completion",
 ]
