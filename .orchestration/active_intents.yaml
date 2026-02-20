@@ -1,44 +1,47 @@
-# Active Intents - Intent-Code Traceability
-# This file tracks the lifecycle of business requirements
+# Active Intents - Intent-Code Traceability System
+# 
+# This file defines the active intents (business goals) that agents can work on.
+# Agents must select an intent before making any code modifications.
+#
+# Two-Stage State Machine:
+#   Stage 1: Agent receives user request
+#   Stage 2: Agent calls select_active_intent(intent_id) to "checkout" an intent
+#   Stage 3: Agent can now make changes within the intent's owned_scope
+#
+# Each intent tracks:
+#   - id: Unique identifier (e.g., INT-001)
+#   - name: Human-readable name
+#   - status: in_progress | completed | blocked
+#   - owned_scope: Glob patterns for files this intent can modify
+#   - constraints: Rules the agent must follow
+#   - acceptance_criteria: Conditions for completion
 
 active_intents:
   - id: "INT-001"
-    name: "Weather API Implementation"
-    status: "IN_PROGRESS"
-    owned_scope:
-      - "src/api/weather/**"
-      - "src/services/weather.ts"
-      - "tests/weather/**"
-    constraints:
-      - "Must use REST API only"
-      - "Must include error handling"
-      - "Must not exceed 100ms response time"
-    acceptance_criteria:
-      - "Unit tests pass with 90% coverage"
-      - "API documentation updated"
-      - "Integration tests pass"
-
-  - id: "INT-002"
-    name: "User Authentication Refactor"
-    status: "PENDING"
+    name: "User Authentication Feature"
+    status: "in_progress"
     owned_scope:
       - "src/auth/**"
       - "src/middleware/auth.ts"
+      - "src/models/user.ts"
     constraints:
       - "Must maintain backward compatibility"
-      - "Must not use external auth providers"
+      - "No breaking changes to existing APIs"
+      - "Passwords must be hashed with bcrypt"
     acceptance_criteria:
       - "All existing tests pass"
-      - "Migration guide documented"
+      - "New users can register and login"
+      - "JWT tokens expire after 24 hours"
 
-  - id: "INT-003"
-    name: "Performance Optimization"
-    status: "PENDING"
+  - id: "INT-002"
+    name: "API Rate Limiting"
+    status: "in_progress"
     owned_scope:
-      - "src/**"
+      - "src/middleware/rateLimit.ts"
+      - "src/api/**"
     constraints:
-      - "Must not break existing functionality"
-      - "Performance improvements must be measurable"
+      - "Limit unauthenticated requests to 100/hour"
+      - "Authenticated requests limited to 1000/hour"
     acceptance_criteria:
-      - "Lighthouse score improvement of 20%"
-      - "No regression in test coverage"
+      - "Rate limit headers included in responses"
+      - "429 status returned when limit exceeded"

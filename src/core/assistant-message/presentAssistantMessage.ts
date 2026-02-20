@@ -689,9 +689,10 @@ export async function presentAssistantMessage(cline: Task) {
 					{
 						const toolUse = block as ToolUse<"write_to_file">
 						const cwd = (cline as any).task?.cwd || process.cwd()
-						try {
+					const currentIntentId = (cline as any).task?.getCurrentIntent?.()
+					try {
 							// Pre-hook: Check intent selection and scope
-							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd, currentIntentId)
 							if (preResult.blocked) {
 								pushToolResult(preResult.error || "Execution blocked by hook system")
 								break
@@ -725,8 +726,9 @@ export async function presentAssistantMessage(cline: Task) {
 						await checkpointSaveAndMark(cline)
 						const toolUse = block as ToolUse<"apply_diff">
 						const cwd = (cline as any).task?.cwd || ""
+	const currentIntentId = (cline as any).task?.getCurrentIntent?.()
 						try {
-							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd, currentIntentId)
 							if (preResult.blocked) {
 								pushToolResult(preResult.error || "Execution blocked by hook system")
 								break
@@ -760,8 +762,9 @@ export async function presentAssistantMessage(cline: Task) {
 						await checkpointSaveAndMark(cline)
 						const toolUse = block as ToolUse<"edit">
 						const cwd = (cline as any).task?.cwd || ""
+	const currentIntentId = (cline as any).task?.getCurrentIntent?.()
 						try {
-							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd, currentIntentId)
 							if (preResult.blocked) {
 								pushToolResult(preResult.error || "Execution blocked by hook system")
 								break
@@ -838,8 +841,9 @@ export async function presentAssistantMessage(cline: Task) {
 					{
 						const toolUse = block as ToolUse<"execute_command">
 						const cwd = (cline as any).task?.cwd || ""
+	const currentIntentId = (cline as any).task?.getCurrentIntent?.()
 						try {
-							const preResult = await preHook(toolUse.name, toolUse.params, cwd)
+							const preResult = await preHook(toolUse.name, toolUse.params, cwd, currentIntentId)
 							if (preResult.blocked) {
 								pushToolResult(preResult.error || "Execution blocked by hook system")
 								break
