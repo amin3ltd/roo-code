@@ -6,6 +6,7 @@ import { Mode, modes, defaultModeSlug, getModeBySlug, getGroupName, getModeSelec
 import { DiffStrategy } from "../../shared/tools"
 import { formatLanguage } from "../../shared/language"
 import { isEmpty } from "../../utils/object"
+import { analyzeTaskComplexity, type TaskComplexity } from "../../utils/task-complexity"
 
 import { McpHub } from "../../services/mcp/McpHub"
 import { CodeIndexManager } from "../../services/code-index/manager"
@@ -55,6 +56,7 @@ async function generatePrompt(
 	todoList?: TodoItem[],
 	modelId?: string,
 	skillsManager?: SkillsManager,
+	taskComplexity?: TaskComplexity,
 ): Promise<string> {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -81,6 +83,22 @@ async function generatePrompt(
 
 	// Tools catalog is not included in the system prompt.
 	const toolsCatalog = ""
+
+	// Generate lightweight prompt for simple tasks (optimized for local/smaller models)
+	if (taskComplexity === "simple") {
+		const lightweightPrompt = `${roleDefinition}
+
+You are a coding assistant. Be concise and helpful.
+
+${getObjectiveSection()}
+
+${await addCustomInstructions(baseInstructions, globalCustomInstructions || "", cwd, mode, {
+		language: language ?? formatLanguage(vscode.env.language),
+		rooIgnoreInstructions,
+		settings,
+	})}`
+		return lightweightPrompt
+	}
 
 	const basePrompt = `${roleDefinition}
 
@@ -126,10 +144,14 @@ export const SYSTEM_PROMPT = async (
 	todoList?: TodoItem[],
 	modelId?: string,
 	skillsManager?: SkillsManager,
+	taskMessage?: string,
 ): Promise<string> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
 	}
+
+	// Analyze task complexity if a task message is provided
+	const taskComplexity = taskMessage ? analyzeTaskComplexity(taskMessage) : undefined
 
 	// Check if it's a custom mode
 	const promptComponent = getPromptComponent(customModePrompts, mode)
@@ -154,5 +176,6 @@ export const SYSTEM_PROMPT = async (
 		todoList,
 		modelId,
 		skillsManager,
+		taskComplexity,
 	)
 }
